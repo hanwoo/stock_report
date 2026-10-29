@@ -4,6 +4,7 @@
 
 | 날짜 | 리포트 |
 |---|---|
+| 2026-10-29 | [PDF](reports/2026/report_20261029.pdf) |
 | 2026-10-28 | [PDF](reports/2026/report_20261028.pdf) |
 | 2026-10-27 | [PDF](reports/2026/report_20261027.pdf) |
 
