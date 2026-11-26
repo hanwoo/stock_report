@@ -43,6 +43,8 @@ val Down = Color(0xFF1565C0)
 val Good = Color(0xFF2E7D32)
 val Warn = Color(0xFFEF6C00)
 val Purple = Color(0xFF6A4BB0)
+val NewBg = Color(0xFFFFECA0)   // 신규 진입 종목 배경(노랑)
+val NewText = Color(0xFFB06000)
 
 fun pn(v: Double?): Color? = when {
     v == null -> null

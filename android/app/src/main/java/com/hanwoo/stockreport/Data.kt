@@ -33,6 +33,7 @@ data class StockItem(
     val ret: Map<String, Double>,
     val flow: Flow?,
     val closes: List<Pair<String, Double>>,
+    val isNew: Boolean = false,  // 직전 리포트 같은 쪽 목록에 없던 신규 진입 종목
 )
 
 data class Trade(
@@ -51,6 +52,7 @@ data class Trade(
 data class TradeSummary(
     val openN: Int, val openAvg: Double, val closedN: Int, val closedAvg: Double,
     val winRate: Double, val allAvg: Double,
+    val openProfit: Double = 0.0, val closedProfit: Double = 0.0, val allProfit: Double = 0.0,
 )
 
 data class Report(
@@ -65,6 +67,7 @@ data class Report(
     val sell: List<StockItem>,
     val trades: List<Trade>,
     val summary: TradeSummary?,
+    val prevDate: String? = null,
 )
 
 // ── JSON 파싱 ───────────────────────────────────────────
@@ -109,6 +112,7 @@ private fun stock(o: JSONObject) = StockItem(
         Flow(it.optString("date"), it.optJSONObject("amount").doubles(), it.optJSONObject("qty").doubles())
     },
     closes = o.optJSONArray("closes").pairs(),
+    isNew = o.optBoolean("is_new", false),
 )
 
 fun parseReport(s: String): Report {
@@ -133,6 +137,7 @@ fun parseReport(s: String): Report {
         TradeSummary(
             it.optInt("open_n"), it.optDouble("open_avg", 0.0), it.optInt("closed_n"),
             it.optDouble("closed_avg", 0.0), it.optDouble("win_rate", 0.0), it.optDouble("all_avg", 0.0),
+            it.optDouble("open_profit", 0.0), it.optDouble("closed_profit", 0.0), it.optDouble("all_profit", 0.0),
         )
     }
     return Report(
@@ -147,6 +152,7 @@ fun parseReport(s: String): Report {
         sell = o.optJSONArray("sell").objs().map(::stock),
         trades = trades,
         summary = sm,
+        prevDate = o.str("prev_date"),
     )
 }
 

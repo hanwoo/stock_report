@@ -64,11 +64,15 @@ object Notifier {
             ContextCompat.checkSelfPermission(ctx, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) return
         val interest = r.buy.filter { it.verdict == "관심" }.map { it.name }
-        val text = "매수 ${r.buy.size} (관심 ${interest.size}) · 매도 ${r.sell.size}"
+        val nb = r.buy.count { it.isNew }
+        val ns = r.sell.count { it.isNew }
+        val text = "매수 ${r.buy.size}${if (nb > 0) " 🆕$nb" else ""} (관심 ${interest.size}) · 매도 ${r.sell.size}${if (ns > 0) " 🆕$ns" else ""}"
         val big = buildString {
             append(text)
             if (interest.isNotEmpty()) append("\n⭐ ").append(interest.joinToString(", "))
-            r.summary?.let { append("\n📒 추적 보유 ${it.openN} 평균 ${pct(it.openAvg)}") }
+            r.summary?.let {
+                append("\n📒 보유 ${it.openN} ${pct(it.openAvg)} · 매도 ${it.closedN} ${if (it.closedN > 0) pct(it.closedAvg) else "-"} · 합산 ${pct(it.allAvg)}")
+            }
         }
         val intent = Intent(ctx, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         val pi = PendingIntent.getActivity(ctx, 0, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)

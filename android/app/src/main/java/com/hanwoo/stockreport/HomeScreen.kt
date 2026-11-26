@@ -16,7 +16,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -103,10 +106,10 @@ private fun TodayTab(rep: Report, vm: MainVM, nav: (Route) -> Unit) {
     LazyColumn(contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item { DateBar(rep.date, vm) }
         item { MarketCard(rep.markets) }
-        item { SectionTitle("🟢 매수 ${rep.buy.size}", "관심 $interest") }
+        item { SectionTitle("🟢 매수 ${rep.buy.size}", "관심 $interest", rep.buy.count { it.isNew }) }
         if (rep.buy.isEmpty()) item { Empty("해당 종목 없음") }
         items(rep.buy) { s -> StockRow(s) { nav(Route.Detail(s, "BUY")) } }
-        item { SectionTitle("🔴 매도 ${rep.sell.size}", "") }
+        item { SectionTitle("🔴 매도 ${rep.sell.size}", "", rep.sell.count { it.isNew }) }
         if (rep.sell.isEmpty()) item { Empty("해당 종목 없음") }
         items(rep.sell) { s -> StockRow(s) { nav(Route.Detail(s, "SELL")) } }
         if (rep.mlMessage.isNotBlank()) item { MlCard(rep.mlMessage) }
@@ -117,7 +120,8 @@ private fun TodayTab(rep: Report, vm: MainVM, nav: (Route) -> Unit) {
         }
         item {
             Text(
-                "조건: 5가지 전략 중 2개↑ 당일 신호 + ML 분석 대상. 대상 외 제외 매수 ${rep.excludedBuy} / 매도 ${rep.excludedSell}\n생성 ${rep.generatedAt.replace('T', ' ')}",
+                "조건: 5가지 전략 중 2개↑ 당일 신호 + ML 분석 대상. 대상 외 제외 매수 ${rep.excludedBuy} / 매도 ${rep.excludedSell}\n" +
+                    "노란 카드 = 직전 리포트(${rep.prevDate ?: "-"}) 목록에 없다가 처음 들어온 종목\n생성 ${rep.generatedAt.replace('T', ' ')}",
                 fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
@@ -162,13 +166,29 @@ private fun MarketCard(ms: List<MarketFlow>) {
 }
 
 @Composable
-private fun SectionTitle(title: String, sub: String) {
-    Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.Bottom) {
+private fun SectionTitle(title: String, sub: String, newCount: Int = 0) {
+    Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(title, style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.width(8.dp))
+        if (newCount > 0) {
+            NewBadge("신규 $newCount")
+            Spacer(Modifier.width(8.dp))
+        }
         Text(sub, fontSize = 13.sp, color = Good)
     }
 }
+
+@Composable
+private fun NewBadge(text: String = "신규") {
+    Surface(color = NewBg, shape = RoundedCornerShape(6.dp)) {
+        Text(text, color = NewText, fontSize = 12.sp, fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+    }
+}
+
+@Composable
+private fun newCardColors(isNew: Boolean) =
+    if (isNew) CardDefaults.cardColors(containerColor = NewBg.copy(alpha = 0.55f)) else CardDefaults.cardColors()
 
 @Composable
 private fun Empty(text: String) = Text(text, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(4.dp))
@@ -176,9 +196,13 @@ private fun Empty(text: String) = Text(text, color = MaterialTheme.colorScheme.o
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun StockRow(s: StockItem, onClick: () -> Unit) {
-    Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
+    Card(onClick = onClick, modifier = Modifier.fillMaxWidth(), colors = newCardColors(s.isNew)) {
         Column(Modifier.padding(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                if (s.isNew) {
+                    NewBadge()
+                    Spacer(Modifier.width(6.dp))
+                }
                 Text(s.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false))
                 Text("  ${s.symbol}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -238,17 +262,25 @@ private fun LedgerTab(rep: Report) {
                         Text("아직 기록된 종목이 없습니다.", Modifier.padding(top = 6.dp))
                     } else {
                         Row(Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                            SummaryCell("보유", "${sm.openN}종목", sm.openAvg, Modifier.weight(1f))
-                            SummaryCell("매도 완료", "${sm.closedN}종목", if (sm.closedN > 0) sm.closedAvg else null, Modifier.weight(1f))
-                            SummaryCell("승률", if (sm.closedN > 0) "%.0f%%".format(sm.winRate * 100) else "-", null, Modifier.weight(1f))
-                            SummaryCell("전체", "평균", sm.allAvg, Modifier.weight(1f))
+                            SummaryCell("보유 (평가)", "${sm.openN}종목", sm.openAvg, Modifier.weight(1f))
+                            SummaryCell("매도 총수익률", "${sm.closedN}종목" + if (sm.closedN > 0) " · 승률 %.0f%%".format(sm.winRate * 100) else "",
+                                if (sm.closedN > 0) sm.closedAvg else null, Modifier.weight(1f))
+                            SummaryCell("보유+매도 합산", "${rep.trades.size}종목", sm.allAvg, Modifier.weight(1f), bold = true)
                         }
+                        Text("총수익률 = 종목마다 같은 금액 투자 기준(종목별 수익률 평균)", fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 6.dp))
                     }
                 }
             }
         }
-        val trades = rep.trades.sortedWith(compareBy<Trade> { !it.open }.thenByDescending { it.buyDate })
-        items(trades) { TradeCard(it) }
+        val held = rep.trades.filter { it.open }.sortedByDescending { it.buyDate }
+        val sold = rep.trades.filter { !it.open }.sortedWith(compareByDescending<Trade> { it.sellDate }.thenByDescending { it.buyDate })
+        item { SectionTitle("📒 보유 목록 ${held.size}", "", held.count { it.buyDate == rep.date }) }
+        if (held.isEmpty()) item { Empty("보유 종목 없음") }
+        items(held) { TradeCard(it, isNew = it.buyDate == rep.date) }
+        item { SectionTitle("🔴 매도 목록 ${sold.size}", "", sold.count { it.sellDate == rep.date }) }
+        if (sold.isEmpty()) item { Empty("아직 매도(청산)된 종목이 없습니다.") }
+        items(sold) { TradeCard(it, isNew = it.sellDate == rep.date) }
         item {
             Text(
                 "매수: 매수 목록 중 ML 동의 & 점검 관심 종목을 당일 종가로 기록\n매도: 보유 종목에 2개↑ 전략 매도 합의가 나오면 당일 종가로 청산\n보유 중이면 매도종가 = 당일 종가(평가), 매도일자 공란 · 수익은 1주 기준",
@@ -259,20 +291,24 @@ private fun LedgerTab(rep: Report) {
 }
 
 @Composable
-private fun SummaryCell(title: String, main: String, ret: Double?, modifier: Modifier) {
+private fun SummaryCell(title: String, main: String, ret: Double?, modifier: Modifier, bold: Boolean = false) {
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(title, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(main, fontWeight = FontWeight.Medium)
-        if (ret != null) ValueText(ret, pct(ret, 2), size = 13)
+        Text(title, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = if (bold) FontWeight.Bold else null)
+        Text(main, fontWeight = FontWeight.Medium, fontSize = 13.sp, textAlign = TextAlign.Center)
+        if (ret != null) ValueText(ret, pct(ret, 2), size = if (bold) 16 else 14) else Text("-", fontSize = 14.sp)
     }
 }
 
 @Composable
-private fun TradeCard(t: Trade) {
+private fun TradeCard(t: Trade, isNew: Boolean = false) {
     var open by remember { mutableStateOf(false) }
-    Card(onClick = { open = !open }, modifier = Modifier.fillMaxWidth()) {
+    Card(onClick = { open = !open }, modifier = Modifier.fillMaxWidth(), colors = newCardColors(isNew)) {
         Column(Modifier.padding(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                if (isNew) {
+                    NewBadge(if (t.open) "오늘 매수" else "오늘 매도")
+                    Spacer(Modifier.width(6.dp))
+                }
                 Text(t.name, style = MaterialTheme.typography.titleMedium)
                 Text("  ${t.symbol}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.weight(1f))
