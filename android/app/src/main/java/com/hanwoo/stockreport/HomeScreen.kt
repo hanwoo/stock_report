@@ -106,10 +106,10 @@ private fun TodayTab(rep: Report, vm: MainVM, nav: (Route) -> Unit) {
     LazyColumn(contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item { DateBar(rep.date, vm) }
         item { MarketCard(rep.markets) }
-        item { SectionTitle("🟢 매수 ${rep.buy.size}", "관심 $interest", rep.buy.count { it.isNew }) }
+        item { SectionTitle("🟢 매수 ${rep.buy.size}", "관심 $interest") }
         if (rep.buy.isEmpty()) item { Empty("해당 종목 없음") }
         items(rep.buy) { s -> StockRow(s) { nav(Route.Detail(s, "BUY")) } }
-        item { SectionTitle("🔴 매도 ${rep.sell.size}", "", rep.sell.count { it.isNew }) }
+        item { SectionTitle("🔴 매도 ${rep.sell.size}", "") }
         if (rep.sell.isEmpty()) item { Empty("해당 종목 없음") }
         items(rep.sell) { s -> StockRow(s) { nav(Route.Detail(s, "SELL")) } }
         if (rep.mlMessage.isNotBlank()) item { MlCard(rep.mlMessage) }
@@ -120,8 +120,7 @@ private fun TodayTab(rep: Report, vm: MainVM, nav: (Route) -> Unit) {
         }
         item {
             Text(
-                "조건: 5가지 전략 중 2개↑ 당일 신호 + ML 분석 대상. 대상 외 제외 매수 ${rep.excludedBuy} / 매도 ${rep.excludedSell}\n" +
-                    "노란 카드 = 직전 리포트(${rep.prevDate ?: "-"}) 목록에 없다가 처음 들어온 종목\n생성 ${rep.generatedAt.replace('T', ' ')}",
+                "조건: 5가지 전략 중 2개↑ 당일 신호 + ML 분석 대상. 대상 외 제외 매수 ${rep.excludedBuy} / 매도 ${rep.excludedSell}\n생성 ${rep.generatedAt.replace('T', ' ')}",
                 fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
@@ -196,13 +195,9 @@ private fun Empty(text: String) = Text(text, color = MaterialTheme.colorScheme.o
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun StockRow(s: StockItem, onClick: () -> Unit) {
-    Card(onClick = onClick, modifier = Modifier.fillMaxWidth(), colors = newCardColors(s.isNew)) {
+    Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                if (s.isNew) {
-                    NewBadge()
-                    Spacer(Modifier.width(6.dp))
-                }
                 Text(s.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false))
                 Text("  ${s.symbol}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
