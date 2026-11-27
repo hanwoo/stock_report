@@ -6,6 +6,7 @@
 
 | 날짜 | 리포트 |
 |---|---|
+| 2026-11-27 | [PDF](reports/2026/report_20261127.pdf) |
 | 2026-11-26 | [PDF](reports/2026/report_20261126.pdf) |
 | 2026-11-25 | [PDF](reports/2026/report_20261125.pdf) |
 | 2026-11-24 | [PDF](reports/2026/report_20261124.pdf) |
